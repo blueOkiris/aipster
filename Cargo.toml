@@ -1,0 +1,22 @@
+[package]
+name = "aipster"
+authors = [ "Dylan Turner <dylantdmt@gmail.com>" ]
+version = "1.0.0"
+edition = "2021"
+license = "GPL-3.0"
+description = "The AppImage Store -er. A front-end for the aip-man"
+readme = "README.md"
+categories = [ "config", "filesystem" ]
+repository = "https://github.com/blueOkiris/aipster"
+
+[[bin]]
+name = "aipster"
+
+[dependencies]
+clap = { version = "4.1.1", features = [ "derive" ] }
+reqwest = { version = "0.11.13", features = [ "blocking" ] }
+serde = { version = "1.0", features = [ "derive" ] }
+serde_json = "1.0.91"
+dirs = "4.0.0"
+gtk = "0.16.2"
+
