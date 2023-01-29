@@ -226,6 +226,32 @@ fn create_pkg_view(
             .margin_top(MARGIN)
             .width_request(BUTTON_SIZE)
             .build();
+
+        let pkg_name = pkg.name.clone();
+        let install_search = search.clone();
+        action_button.connect_clicked(move |_| {
+            let result = Command::new("aipman")
+                .args([ "install", pkg_name.clone().as_str() ])
+                .output();
+            match result {
+                Err(err) => {
+                    let dialog = create_status_dialog(
+                        format!("Error: {}", err.to_string()).as_str(),
+                        installed_only, install_search.clone()
+                    );
+                    dialog.show_all();
+                }, Ok(output) => {
+                    let dialog = create_status_dialog(format!(
+                        "Command:\naipman install {}\n\nStdout:\n{}\nStderr:\n{}",
+                        pkg_name,
+                        from_utf8(&output.stdout.as_slice()).unwrap_or("Unknown"),
+                        from_utf8(&output.stderr.as_slice()).unwrap_or("Unknown")
+                    ).as_str(), installed_only, install_search.clone());
+                    dialog.show_all();
+                }
+            }
+        });
+
         graphic_box.pack_end(&action_button, true, true, 0);
     }
     if inst_pkg.is_some() && inst_pkg.unwrap().upgradable_to(&pkg) {
@@ -235,6 +261,32 @@ fn create_pkg_view(
             .margin_top(MARGIN)
             .width_request(BUTTON_SIZE)
             .build();
+
+        let pkg_name = pkg.name.clone();
+        let upgrade_search = search.clone();
+        action_button.connect_clicked(move |_| {
+            let result = Command::new("aipman")
+                .args([ "install", pkg_name.clone().as_str() ])
+                .output();
+            match result {
+                Err(err) => {
+                    let dialog = create_status_dialog(
+                        format!("Error: {}", err.to_string()).as_str(),
+                        installed_only, upgrade_search.clone()
+                    );
+                    dialog.show_all();
+                }, Ok(output) => {
+                    let dialog = create_status_dialog(format!(
+                        "Command:\naipman install {}\n\nStdout:\n{}\nStderr:\n{}",
+                        pkg_name,
+                        from_utf8(&output.stdout.as_slice()).unwrap_or("Unknown"),
+                        from_utf8(&output.stderr.as_slice()).unwrap_or("Unknown")
+                    ).as_str(), installed_only, upgrade_search.clone());
+                    dialog.show_all();
+                }
+            }
+        });
+
         graphic_box.pack_end(&action_button, true, true, 0);
     }
     if inst_pkg.is_some() {
@@ -246,6 +298,7 @@ fn create_pkg_view(
             .build();
 
         let pkg_name = pkg.name.clone();
+        let remove_search = search.clone();
         action_button.connect_clicked(move |_| {
             let result = Command::new("aipman")
                 .args([ "remove", pkg_name.clone().as_str() ])
@@ -254,7 +307,7 @@ fn create_pkg_view(
                 Err(err) => {
                     let dialog = create_status_dialog(
                         format!("Error: {}", err.to_string()).as_str(),
-                        installed_only, search.clone()
+                        installed_only, remove_search.clone()
                     );
                     dialog.show_all();
                 }, Ok(output) => {
@@ -263,12 +316,11 @@ fn create_pkg_view(
                         pkg_name,
                         from_utf8(&output.stdout.as_slice()).unwrap_or("Unknown"),
                         from_utf8(&output.stderr.as_slice()).unwrap_or("Unknown")
-                    ).as_str(), installed_only, search.clone());
+                    ).as_str(), installed_only, remove_search.clone());
                     dialog.show_all();
                 }
             }
         });
-
 
         graphic_box.pack_end(&action_button, true, true, 0);
     }   
@@ -340,7 +392,7 @@ fn create_status_dialog(msg: &str, installed_only: bool, search: Option<String>)
     dialog.add_button("Close", ResponseType::Apply);
 
     let scroll = ScrolledWindow::builder()
-        .hscrollbar_policy(PolicyType::Never).vscrollbar_policy(PolicyType::Always)
+        .hscrollbar_policy(PolicyType::Automatic).vscrollbar_policy(PolicyType::Always)
         .hexpand(true).vexpand(true)
         .margin(0)
         .build();
