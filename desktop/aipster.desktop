@@ -1,0 +1,8 @@
+[Desktop Entry]
+Version=2
+Type=Application
+Terminal=false
+Exec=/usr/bin/aipster
+Name=AppImage Store -er
+Icon=/usr/share/icons/aipster.png
+
