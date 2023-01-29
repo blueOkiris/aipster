@@ -1,7 +1,5 @@
 # The AppImage Store -er (aipster)
 
-NOTE: In progress! GUI is "done," but no functionality implemented.
-
 ![screenshot](screenshot.png)
 
 ## Description
