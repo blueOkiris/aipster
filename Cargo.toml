@@ -20,4 +20,5 @@ dirs = "4.0.0"
 gtk = "0.15.1"
 version-compare = "0.1.1"
 webkit2gtk = { version = "0.18.0", features = [ "v2_6" ] }
+rust-fuzzy-search = "0.1.1"
 
