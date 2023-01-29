@@ -28,7 +28,7 @@ use crate::pkg::{
 const MARGIN: i32 = 5;
 const BAR_HEIGHT: i32 = 20;
 const MIN_SEARCH_BAR_LEN: i32 = 100;
-const ICON_SIZE: i32 = 64;
+const ICON_SIZE: i32 = 80;
 const BUTTON_SIZE: i32 = 64;
 
 fn main() {
@@ -136,11 +136,16 @@ fn create_pkg_view(pkg: &Package, inst_pkg: Option<&Package>) -> Box {
         pkg.name.clone()
     );
     let resp = get(icon_url.clone()).expect("Failed to get icon!");
-    pic.load_uri(if resp.status() != 200 {
-        "https://raw.githubusercontent.com/blueOkiris/aip-man-pkg-list/main/icons/default.svg"
-    } else {
-        icon_url.as_str()
-    });
+    let html = format!(
+        "<html>\n<body style='{}'>\n<img src='{}' class='center' />\n<body>\n<html>",
+        "background-color:#202040;",
+        if resp.status() != 200 {
+            "https://raw.githubusercontent.com/blueOkiris/aip-man-pkg-list/main/icons/default.svg"
+        } else {
+            icon_url.as_str()
+        }
+    );
+    pic.load_html(html.as_str(), None);
     graphic_box.pack_start(&pic, true, true, 0);
 
     if inst_pkg.is_none() {
