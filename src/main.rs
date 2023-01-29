@@ -7,19 +7,21 @@
 
 mod pkg;
 
+use std::cmp::Ordering;
 use gtk::{
     Application, ApplicationWindow,
     Box, ScrolledWindow, Label, Button, Entry, CheckButton,
     Align, PolicyType, Orientation,
     prelude::{
         ApplicationExtManual, ApplicationExt,
-        WidgetExt, ContainerExt, BoxExt, ButtonExt, ToggleButtonExt, WidgetExtManual
+        WidgetExt, ContainerExt, BoxExt, ButtonExt, ToggleButtonExt, WidgetExtManual, EntryExt
     }
 };
 use webkit2gtk::{
     WebView,
     traits::WebViewExt
 };
+use rust_fuzzy_search::fuzzy_compare;
 use reqwest::blocking::get;
 use crate::pkg::{
     pull_package_list, get_pkg_manifest, Package
@@ -47,7 +49,7 @@ fn main() {
             .default_height(600)
             .expand(true).hexpand(true).vexpand(true)
             .build();
-        let panel = create_win_content(false);
+        let panel = create_win_content(false, None);
         win.add(&panel);
 
         unsafe {
@@ -62,7 +64,7 @@ fn main() {
 }
 
 /// Use global state to redo the window creation
-fn refresh_window(installed_only: bool) {
+fn refresh_window(installed_only: bool, search: Option<String>) {
     let win = unsafe {
         WIN.clone().unwrap()
     };
@@ -74,7 +76,7 @@ fn refresh_window(installed_only: bool) {
         panel.destroy();
     }
 
-    let new_panel = create_win_content(installed_only);
+    let new_panel = create_win_content(installed_only, search);
     win.add(&new_panel);
     
     unsafe {
@@ -86,9 +88,9 @@ fn refresh_window(installed_only: bool) {
 }
 
 /// Put top bar and package list into a container
-fn create_win_content(installed_only: bool) -> Box {
-    let top_bar = create_top_bar(installed_only);
-    let pkg_disp = create_pkg_display(installed_only);
+fn create_win_content(installed_only: bool, search: Option<String>) -> Box {
+    let top_bar = create_top_bar(installed_only, search.clone());
+    let pkg_disp = create_pkg_display(installed_only, search.clone());
 
     let panel = Box::builder()
         .orientation(Orientation::Vertical)
@@ -102,7 +104,7 @@ fn create_win_content(installed_only: bool) -> Box {
 }
 
 /// Create a list of packages in a vertically scrolled box
-fn create_pkg_display(installed_only: bool) -> Box {
+fn create_pkg_display(installed_only: bool, search: Option<String>) -> Box {
     // Main, expanding container
     let cont = Box::builder()
         .margin(0).hexpand(true).vexpand(true)
@@ -123,7 +125,22 @@ fn create_pkg_display(installed_only: bool) -> Box {
     // Add each package thing to the main vbox
     let inst_pkgs = get_pkg_manifest();
     let mut online_pkgs = pull_package_list();
-    online_pkgs.sort_by(|a, b| a.name.cmp(&b.name));
+    if search.is_none() {
+        online_pkgs.sort_by(|a, b| a.name.cmp(&b.name));
+    } else {
+        online_pkgs.sort_by(|a, b| {
+            let a_score = fuzzy_compare(a.name.as_str(), search.clone().unwrap().as_str());
+            let b_score = fuzzy_compare(b.name.as_str(), search.clone().unwrap().as_str());
+            if a_score > b_score {
+                Ordering::Greater
+            } else if a_score < b_score {
+                Ordering::Less
+            } else {
+                Ordering::Equal
+            }
+        });
+        online_pkgs.reverse();
+    }
     for pkg in online_pkgs {
         if installed_only && !inst_pkgs.iter().any(|e| e.name == pkg.name) {
             continue;
@@ -276,20 +293,41 @@ fn create_pkg_view(pkg: &Package, inst_pkg: Option<&Package>) -> Box {
 }
 
 /// Create a top bar with a search box, installed checkbox, and refresh
-fn create_top_bar(installed_only: bool) -> Box {
+fn create_top_bar(installed_only: bool, search: Option<String>) -> Box {
     let cont = Box::builder()
         .hexpand(true).vexpand(false).height_request(BAR_HEIGHT)
         .orientation(Orientation::Horizontal)
         .build();
 
+    let def_search = if search.is_none() {
+        String::new()
+    } else {
+        search.clone().unwrap()
+    };
     let search_bar = Entry::builder()
         .hexpand(true).vexpand(false).width_request(MIN_SEARCH_BAR_LEN)
-        .build();
+        .margin_end(MARGIN)
+        .text(if search.is_some() {
+            def_search.as_str()
+        } else {
+            ""
+        }).build();
+    search_bar.connect_activate(move |bar| {
+        if !bar.text().is_empty() {
+            refresh_window(installed_only, Some(String::from(bar.text().as_str())));
+        }
+    });
     let search_button = Button::builder()
         .label("Search")
         .hexpand(false).vexpand(false)
         .margin_end(MARGIN)
         .build();
+    let search_bar_sr_btn = search_bar.clone();
+    search_button.connect_clicked(move |_| {
+        if !search_bar_sr_btn.text().is_empty() {
+            refresh_window(installed_only, Some(String::from(search_bar_sr_btn.text().as_str())));
+        }
+    });
 
     let installed = CheckButton::builder()
         .label("Installed")
@@ -297,17 +335,18 @@ fn create_top_bar(installed_only: bool) -> Box {
         .hexpand(false).vexpand(false)
         .margin_end(MARGIN)
         .build();
-    installed.connect_toggled(|inst| {
-        refresh_window(inst.is_active());
+    let inst_search = search.clone();
+    installed.connect_toggled(move |inst| {
+        refresh_window(inst.is_active(), inst_search.clone());
     });
 
     let refresh_button = Button::builder()
         .label("⟲")
         .hexpand(false).vexpand(false)
         .build();
-    let installed_ref_btn_clone = installed.clone();
+    let search_ref_btn = search.clone();
     refresh_button.connect_clicked(move |_| {
-        refresh_window(installed_ref_btn_clone.is_active());
+        refresh_window(installed_only, search_ref_btn.clone());
     });
 
     cont.pack_end(&refresh_button, false, false, 0);
