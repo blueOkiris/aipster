@@ -8,21 +8,15 @@
 use std::{
     path::Path,
     fs::{
-        File, create_dir_all, read_to_string, remove_file 
-    }, io::{
-        Write, copy
-    }, process::{
-        Stdio, Command
-    }
+        File, create_dir_all, read_to_string 
+    }, io::Write,
 };
 use dirs::home_dir;
 use reqwest::blocking::get;
 use serde::{
     Serialize, Deserialize
 };
-use serde_json::{
-    from_str, to_string_pretty
-};
+use serde_json::from_str;
 use version_compare::{
     compare, Cmp
 };
