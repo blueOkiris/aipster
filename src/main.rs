@@ -7,13 +7,17 @@
 
 mod pkg;
 
-use std::cmp::Ordering;
+use std::{
+    cmp::Ordering,
+    process::Command,
+    str::from_utf8
+};
 use gtk::{
-    Application, ApplicationWindow,
+    Application, ApplicationWindow, Dialog,
     Box, ScrolledWindow, Label, Button, Entry, CheckButton,
-    Align, PolicyType, Orientation,
+    Align, PolicyType, Orientation, ResponseType,
     prelude::{
-        ApplicationExtManual, ApplicationExt,
+        ApplicationExtManual, ApplicationExt, DialogExt,
         WidgetExt, ContainerExt, BoxExt, ButtonExt, ToggleButtonExt, WidgetExtManual, EntryExt
     }
 };
@@ -32,6 +36,8 @@ const BAR_HEIGHT: i32 = 20;
 const MIN_SEARCH_BAR_LEN: i32 = 100;
 const ICON_SIZE: i32 = 80;
 const BUTTON_SIZE: i32 = 64;
+const DIALOG_WIDTH: i32 = 300;
+const DIALOG_HEIGHT: i32 = 180;
 
 static mut WIN: Option<ApplicationWindow> = None;
 static mut PANEL: Option<Box> = None;
@@ -145,7 +151,10 @@ fn create_pkg_display(installed_only: bool, search: Option<String>) -> Box {
         if installed_only && !inst_pkgs.iter().any(|e| e.name == pkg.name) {
             continue;
         }
-        let pkg_view = create_pkg_view(&pkg, inst_pkgs.iter().find(|e| e.name == pkg.name));
+        let pkg_view = create_pkg_view(
+            &pkg, inst_pkgs.iter().find(|e| e.name == pkg.name),
+            installed_only, search.clone()
+        );
         pkg_disp.pack_start(&pkg_view, true, true, MARGIN as u32);
     }
 
@@ -155,7 +164,9 @@ fn create_pkg_display(installed_only: bool, search: Option<String>) -> Box {
 }
 
 // Turn package data into a graphical view
-fn create_pkg_view(pkg: &Package, inst_pkg: Option<&Package>) -> Box {
+fn create_pkg_view(
+        pkg: &Package, inst_pkg: Option<&Package>,
+        installed_only: bool, search: Option<String>) -> Box {
     // Main container of each item
     let cont = Box::builder()
         .margin(0).hexpand(true).vexpand(true)
@@ -233,6 +244,32 @@ fn create_pkg_view(pkg: &Package, inst_pkg: Option<&Package>) -> Box {
             .margin_top(MARGIN)
             .width_request(BUTTON_SIZE)
             .build();
+
+        let pkg_name = pkg.name.clone();
+        action_button.connect_clicked(move |_| {
+            let result = Command::new("aipman")
+                .args([ "remove", pkg_name.clone().as_str() ])
+                .output();
+            match result {
+                Err(err) => {
+                    let dialog = create_status_dialog(
+                        format!("Error: {}", err.to_string()).as_str(),
+                        installed_only, search.clone()
+                    );
+                    dialog.show_all();
+                }, Ok(output) => {
+                    let dialog = create_status_dialog(format!(
+                        "Command:\naipman remove {}\n\nStdout:\n{}\nStderr:\n{}",
+                        pkg_name,
+                        from_utf8(&output.stdout.as_slice()).unwrap_or("Unknown"),
+                        from_utf8(&output.stderr.as_slice()).unwrap_or("Unknown")
+                    ).as_str(), installed_only, search.clone());
+                    dialog.show_all();
+                }
+            }
+        });
+
+
         graphic_box.pack_end(&action_button, true, true, 0);
     }   
 
@@ -290,6 +327,40 @@ fn create_pkg_view(pkg: &Package, inst_pkg: Option<&Package>) -> Box {
     scroll_cont.add(&entry);
     cont.pack_start(&scroll_cont, true, true, 0);
     cont
+}
+
+/// Create a pop up to show errors and aipman output. Should block rest of app.
+fn create_status_dialog(msg: &str, installed_only: bool, search: Option<String>) -> Dialog {
+    let dialog = Dialog::builder()
+        .title("Status")
+        .default_width(DIALOG_WIDTH).default_height(DIALOG_HEIGHT)
+        .width_request(DIALOG_WIDTH).height_request(DIALOG_HEIGHT)
+        .resizable(false).modal(true)
+        .build();
+    dialog.add_button("Close", ResponseType::Apply);
+
+    let scroll = ScrolledWindow::builder()
+        .hscrollbar_policy(PolicyType::Never).vscrollbar_policy(PolicyType::Always)
+        .hexpand(true).vexpand(true)
+        .margin(0)
+        .build();
+
+    let status = Label::builder()
+        .label(msg).single_line_mode(false)
+        .hexpand(true).vexpand(true)
+        .margin_end(MARGIN)
+        .build();
+
+    dialog.connect_response(move |win, resp| {
+        if resp == ResponseType::Apply {
+            win.hide();
+            refresh_window(installed_only, search.clone());
+        }
+    });
+
+    scroll.add(&status);
+    dialog.content_area().pack_start(&scroll, true, true, 0);
+    dialog
 }
 
 /// Create a top bar with a search box, installed checkbox, and refresh
