@@ -16,14 +16,19 @@ use gtk::{
         WidgetExt, ContainerExt, BoxExt
     }
 };
-use pkg::get_pkg_manifest;
+use reqwest::blocking::get;
+use webkit2gtk::{
+    WebView,
+    traits::WebViewExt
+};
 use crate::pkg::{
-    pull_package_list, Package
+    pull_package_list, get_pkg_manifest, Package
 };
 
 const MARGIN: i32 = 5;
 const BAR_HEIGHT: i32 = 20;
 const MIN_SEARCH_BAR_LEN: i32 = 100;
+const ICON_SIZE: i32 = 64;
 
 fn main() {
     let app = Application::builder()
@@ -114,12 +119,29 @@ fn create_pkg_view(pkg: &Package, inst_pkg: Option<&Package>) -> Box {
      */
     let entry = Box::builder()
         .orientation(Orientation::Horizontal)
-        .margin(0).hexpand(true).vexpand(true)
+        .margin(MARGIN).hexpand(true).vexpand(true)
         .halign(Align::Start)
         .build();
 
-    let pic = Label::new(Some("PIC HERE"));
+    let graphic_box = Box::builder()
+        .orientation(Orientation::Vertical)
+        .margin(MARGIN).hexpand(true).vexpand(true)
+        .build();
+
+    let pic = WebView::builder().width_request(ICON_SIZE).height_request(ICON_SIZE).build();
+    let icon_url = format!(
+        "https://raw.githubusercontent.com/blueOkiris/aip-man-pkg-list/main/icons/{}.svg",
+        pkg.name.clone()
+    );
+    let resp = get(icon_url.clone()).expect("Failed to get icon!");
+    pic.load_uri(if resp.status() != 200 {
+        "https://raw.githubusercontent.com/blueOkiris/aip-man-pkg-list/main/icons/default.svg"
+    } else {
+        icon_url.as_str()
+    });
     
+    graphic_box.pack_start(&pic, true, true, 0);
+
     let info_box = Box::builder()
         .orientation(Orientation::Vertical)
         .margin(0).hexpand(true).vexpand(true)
@@ -168,7 +190,7 @@ fn create_pkg_view(pkg: &Package, inst_pkg: Option<&Package>) -> Box {
     info_box.pack_start(&version_box, true, true, 0);
     info_box.pack_start(&url_box, true, true, 0);
 
-    entry.pack_start(&pic, true, true, MARGIN as u32);
+    entry.pack_start(&graphic_box, true, true, MARGIN as u32);
     entry.pack_end(&info_box, true, true, 0);
 
     scroll_cont.add(&entry);
