@@ -29,6 +29,7 @@ const MARGIN: i32 = 5;
 const BAR_HEIGHT: i32 = 20;
 const MIN_SEARCH_BAR_LEN: i32 = 100;
 const ICON_SIZE: i32 = 64;
+const BUTTON_SIZE: i32 = 64;
 
 fn main() {
     let app = Application::builder()
@@ -123,6 +124,7 @@ fn create_pkg_view(pkg: &Package, inst_pkg: Option<&Package>) -> Box {
         .halign(Align::Start)
         .build();
 
+    // Draw the icon and the button we'll use
     let graphic_box = Box::builder()
         .orientation(Orientation::Vertical)
         .margin(MARGIN).hexpand(true).vexpand(true)
@@ -139,8 +141,35 @@ fn create_pkg_view(pkg: &Package, inst_pkg: Option<&Package>) -> Box {
     } else {
         icon_url.as_str()
     });
-    
     graphic_box.pack_start(&pic, true, true, 0);
+
+    if inst_pkg.is_none() {
+        let action_button = Button::builder()
+            .label("Install")
+            .hexpand(false).vexpand(false)
+            .margin_top(MARGIN)
+            .width_request(BUTTON_SIZE)
+            .build();
+        graphic_box.pack_end(&action_button, true, true, 0);
+    }
+    if inst_pkg.is_some() && inst_pkg.unwrap().upgradable_to(&pkg) {
+        let action_button = Button::builder()
+            .label("Upgrade")
+            .hexpand(false).vexpand(false)
+            .margin_top(MARGIN)
+            .width_request(BUTTON_SIZE)
+            .build();
+        graphic_box.pack_end(&action_button, true, true, 0);
+    }
+    if inst_pkg.is_some() {
+        let action_button = Button::builder()
+            .label("Remove")
+            .hexpand(false).vexpand(false)
+            .margin_top(MARGIN)
+            .width_request(BUTTON_SIZE)
+            .build();
+        graphic_box.pack_end(&action_button, true, true, 0);
+    }   
 
     let info_box = Box::builder()
         .orientation(Orientation::Vertical)
