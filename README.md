@@ -1,5 +1,9 @@
 # The AppImage Store -er (aipster)
 
+NOTE: In progress! GUI is "done," but no functionality implemented.
+
+![screenshot](screenshot.png)
+
 ## Description
 
 A graphical store of sort for downloading AppImages from the aip-man [global package list](https://github.com/blueOkiris/aip-man-pkg-list). It acts a front-end for the [AppImage package manager](https://github.com/blueOkiris/aip-man).
