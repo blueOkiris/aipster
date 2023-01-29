@@ -122,7 +122,9 @@ fn create_pkg_display(installed_only: bool) -> Box {
 
     // Add each package thing to the main vbox
     let inst_pkgs = get_pkg_manifest();
-    for pkg in pull_package_list() {
+    let mut online_pkgs = pull_package_list();
+    online_pkgs.sort_by(|a, b| a.name.cmp(&b.name));
+    for pkg in online_pkgs {
         if installed_only && !inst_pkgs.iter().any(|e| e.name == pkg.name) {
             continue;
         }
